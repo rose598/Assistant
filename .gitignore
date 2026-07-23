@@ -1,0 +1,50 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# ── 虚拟环境 ──
+.venv/
+venv/
+env/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── 环境变量（含密钥） ──
+.env
+
+# ── 数据文件 ──
+data/
+*.db
+*.sqlite3
+
+# ── 测试与覆盖率 ──
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+.mypy_cache/
+
+# ── 向量数据库持久化 ──
+chroma_data/
+
+# ── 日志 ──
+*.log
+logs/
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── Docker ──
+docker/.env
