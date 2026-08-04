@@ -85,7 +85,16 @@ pytest tests/test_intent/
 
 # 日志分析模块测试
 pytest tests/test_log_analysis/
+
+# LLM 接入模块测试（第3周：LLM 调用 / 检索召回率 / 流式输出 / 对话管理 / 缓存命中率）
+pytest tests/test_llm/
+
+# 监控模块测试（第4周：排队监控 / 空闲检测 / 预测 / 定时调度 / 推送）
+pytest tests/test_monitor/
 ```
+
+LLM 相关测试的详细说明与验收结果见 [测试报告：第3周](test_report_week3.md)。
+日志与监控相关测试的详细说明与验收结果见 [测试报告：第4周](test_report_week4.md)。
 
 ### 显示测试覆盖率
 
