@@ -91,10 +91,16 @@ pytest tests/test_llm/
 
 # 监控模块测试（第4周：排队监控 / 空闲检测 / 预测 / 定时调度 / 推送）
 pytest tests/test_monitor/
+# 对话管理模块测试（第5周：对话状态管理 / 回退 + 分支场景）
+pytest tests/test_dialog/
+
+# 脚本处理模块测试（第5周：脚本解析生成 / 脚本改写流程）
+pytest tests/test_script/
 ```
 
 LLM 相关测试的详细说明与验收结果见 [测试报告：第3周](test_report_week3.md)。
 日志与监控相关测试的详细说明与验收结果见 [测试报告：第4周](test_report_week4.md)。
+对话与脚本相关测试的详细说明与验收结果见 [测试报告：第5周](test_report_week5.md)。
 
 ### 显示测试覆盖率
 
@@ -324,5 +330,9 @@ print(f"Debug: {config.DEBUG}")
 
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - 贡献指南
 - [README.md](../README.md) - 项目说明
-- [deploy.md](./deploy.md) - 部署指南（待编写）
-- [api.md](./api.md) - API 文档（待编写）
+- [deploy.md](./deploy.md) - 部署指南
+- [api.md](./api.md) - API 文档
+- [demo_script.md](./demo_script.md) - 演示视频脚本
+- [test_report_week3.md](./test_report_week3.md) - 第3周测试报告
+- [test_report_week4.md](./test_report_week4.md) - 第4周测试报告
+- [test_report_week5.md](./test_report_week5.md) - 第5周测试报告
