@@ -1,0 +1,74 @@
+{
+  "slurm_commands": [
+    {
+      "id": "cmd-001",
+      "command": "sbatch <script.sbatch>",
+      "description": "提交批处理作业",
+      "example": "sbatch scripts/train.sbatch",
+      "category": "job_submission"
+    },
+    {
+      "id": "cmd-002",
+      "command": "squeue -u \"$USER\"",
+      "description": "查看自己的作业列表及状态",
+      "example": "squeue -u \"$USER\"",
+      "category": "job_status"
+    },
+    {
+      "id": "cmd-003",
+      "command": "scancel <job_id>",
+      "description": "取消指定作业",
+      "example": "scancel 12345",
+      "category": "job_cancel"
+    },
+    {
+      "id": "cmd-004",
+      "command": "scontrol show job <job_id>",
+      "description": "查看作业详情（状态、退出码、等待原因等）",
+      "example": "scontrol show job 12345",
+      "category": "job_status"
+    },
+    {
+      "id": "cmd-005",
+      "command": "scontrol show part",
+      "description": "查看分区限制（TotalCPUs、TotalMemory、MaxTime 等）",
+      "example": "scontrol show part",
+      "category": "platform_info"
+    },
+    {
+      "id": "cmd-006",
+      "command": "sinfo",
+      "description": "查看节点与分区状态（idle/mix/comp/down）",
+      "example": "sinfo",
+      "category": "platform_info"
+    },
+    {
+      "id": "cmd-007",
+      "command": "sacct -j <job_id>",
+      "description": "查看历史作业信息（含已完成/失败的作业）",
+      "example": "sacct -j 12345 --format=JobID,JobName,State,ExitCode,ReqMem,MaxRSS,NNodes,NTasks",
+      "category": "job_status"
+    },
+    {
+      "id": "cmd-008",
+      "command": "cat <err_file> / cat <out_file>",
+      "description": "查看作业的错误/标准输出日志",
+      "example": "cat logs/train-12345.err",
+      "category": "job_debug"
+    },
+    {
+      "id": "cmd-009",
+      "command": "tail -n 80 <log_file>",
+      "description": "查看日志文件的最后 80 行",
+      "example": "tail -n 80 logs/train-12345.err",
+      "category": "job_debug"
+    },
+    {
+      "id": "cmd-010",
+      "command": "srun --pty bash",
+      "description": "申请交互式调试会话（短时间）",
+      "example": "srun -p Students --qos=qos_stu_default --gres=gpu:1 -c 1 -t 00:10:00 --pty bash",
+      "category": "job_interactive"
+    }
+  ]
+}

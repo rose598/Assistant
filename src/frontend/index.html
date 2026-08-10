@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>107-Agent 算力平台答疑助手</title>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <h1>107-Agent 答疑助手</h1>
+            <span class="subtitle">USTC 本科生算力平台智能问答</span>
+        </div>
+    </header>
+
+    <main class="chat">
+        <div id="messages" class="messages">
+            <div class="msg bot">
+                <div class="bubble">
+                    你好！我是算力平台答疑助手。你可以问我：
+                    <ul>
+                        <li>怎么提交作业？</li>
+                        <li>CUDA out of memory 怎么办？</li>
+                        <li>作业一直排队的原因？</li>
+                        <li>如何申请更高算力？</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="inputbar">
+        <form id="ask-form" autocomplete="off">
+            <input id="question" type="text" placeholder="输入你的问题，回车发送…"
+                   maxlength="5000" autofocus>
+            <button type="submit">发送</button>
+        </form>
+        <p class="hint">问题会发送到 /api/ask 进行检索回答</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+    <script src="scripts.js"></script>
+</body>
+</html>
