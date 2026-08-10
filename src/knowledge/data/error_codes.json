@@ -1,0 +1,76 @@
+{
+  "error_codes": [
+    {
+      "code": "QOSMaxWallDurationPerJobLimit",
+      "type": "qos_limit",
+      "description": "作业运行时间超过 QOS 允许上限",
+      "category": "error_qos_limit"
+    },
+    {
+      "code": "QOSMaxCpuPerUserLimit",
+      "type": "qos_limit",
+      "description": "CPU 核数超过当前用户/QOS 限制",
+      "category": "error_qos_limit"
+    },
+    {
+      "code": "CUDA out of memory",
+      "type": "oom",
+      "description": "GPU 显存不足",
+      "category": "error_oom"
+    },
+    {
+      "code": "oom-killer",
+      "type": "oom",
+      "description": "系统内存不足，进程被内核杀死",
+      "category": "error_oom"
+    },
+    {
+      "code": "DUE TO TIME LIMIT",
+      "type": "timeout",
+      "description": "作业因运行超时被终止",
+      "category": "error_qos_limit"
+    },
+    {
+      "code": "ModuleNotFoundError",
+      "type": "env_missing",
+      "description": "Python 模块未安装或环境未激活",
+      "category": "error_env"
+    },
+    {
+      "code": "conda: command not found",
+      "type": "env_missing",
+      "description": "批处理作业未加载 conda 初始化",
+      "category": "error_env"
+    },
+    {
+      "code": "No such file or directory",
+      "type": "script_error",
+      "description": "路径错误或文件不存在",
+      "category": "error_script"
+    },
+    {
+      "code": "Permission denied",
+      "type": "script_error",
+      "description": "文件/目录权限不足",
+      "category": "error_script"
+    },
+    {
+      "code": "Driver/library version mismatch",
+      "type": "gpu",
+      "description": "NVML/驱动库版本与节点驱动不匹配",
+      "category": "error_gpu"
+    },
+    {
+      "code": "nvidia-smi not found",
+      "type": "gpu",
+      "description": "当前环境无 GPU 或 GPU 未申请",
+      "category": "error_gpu"
+    },
+    {
+      "code": "SyntaxError / ParseError",
+      "type": "script_error",
+      "description": "脚本语法错误",
+      "category": "error_script"
+    }
+  ]
+}

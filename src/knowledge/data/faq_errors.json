@@ -1,0 +1,787 @@
+{
+  "faq": [
+    {
+      "id": "faq-001",
+      "category": "error_qos_limit",
+      "title": "提交作业时报 QOSMaxWallDurationPerJobLimit",
+      "keywords": [
+        "QOSMaxWallDurationPerJobLimit",
+        "超时",
+        "运行时间",
+        "4小时",
+        "时间限制",
+        "-t",
+        "最长运行时间"
+      ],
+      "intents": [
+        "error_diagnosis",
+        "job_submission"
+      ],
+      "question": "为什么我提交作业时报 QOSMaxWallDurationPerJobLimit？",
+      "answer": "这个错误表示作业申请的运行时间超过当前 QOS 允许的最长时间。\n\n**原因**：默认 QOS (qos_stu_default) 下单个作业最长运行时间为 4 小时。\n\n**解决步骤**：\n1. 检查脚本中的 `#SBATCH -t` 或 GUI 中\"最长运行时间\"字段\n2. 如果使用默认 QOS，把运行时间调到 4 小时以内\n3. 长任务先跑短时间 smoke test，确认流程正确后再申请额外算力\n4. 如需更长时间，通过平台资源申请入口提升 QOS 等级",
+      "related_errors": [
+        "QOSMaxCpuPerUserLimit"
+      ],
+      "references": [
+        "Slurm 速查 - 当前默认配置",
+        "平台资源 - QOS 与资源上限"
+      ]
+    },
+    {
+      "id": "faq-002",
+      "category": "error_qos_limit",
+      "title": "提交作业时报 QOSMaxCpuPerUserLimit",
+      "keywords": [
+        "QOSMaxCpuPerUserLimit",
+        "CPU",
+        "核心数",
+        "超过限制",
+        "--cpus-per-task",
+        "4核"
+      ],
+      "intents": [
+        "error_diagnosis",
+        "job_submission"
+      ],
+      "question": "提交作业时报 QOSMaxCpuPerUserLimit 是什么问题？",
+      "answer": "这个错误表示申请的 CPU 核数超过当前用户或 QOS 的限制。\n\n**原因**：统一认证登录的默认配额为 4 CPU。\n\n**解决步骤**：\n1. 检查脚本中的 `--cpus-per-task` 或 GUI 中 CPU 核心数字段\n2. 第一次提交先使用不超过 4 核的配置\n3. 如果确实需要更多 CPU，先准备任务说明和日志，再通过平台申请额外算力",
+      "related_errors": [
+        "QOSMaxWallDurationPerJobLimit"
+      ],
+      "references": [
+        "平台资源 - QOS 与资源上限",
+        "Slurm 速查 - 当前默认配置"
+      ]
+    },
+    {
+      "id": "faq-003",
+      "category": "error_gpu",
+      "title": "nvidia-smi 找不到或看不到 GPU",
+      "keywords": [
+        "nvidia-smi",
+        "看不到GPU",
+        "找不到GPU",
+        "No GPU",
+        "无GPU"
+      ],
+      "intents": [
+        "error_diagnosis"
+      ],
+      "question": "为什么我在集群上运行 nvidia-smi 找不到 GPU？",
+      "answer": "可能原因：\n1. 你在登录节点运行命令——登录节点通常不提供 GPU\n2. 作业没有申请 GPU（脚本中缺少 `--gres=gpu:1`）\n3. 作业还在排队（PD 状态），没有真正进入计算节点\n4. 环境或驱动信息需要在计算节点内查看\n\n**解决步骤**：\n1. 确认作业脚本中申请了 GPU：`#SBATCH --gres=gpu:1`\n2. 在作业脚本里加入 `nvidia-smi` 命令，从日志中查看输出\n3. 用 `squeue -u \"$USER\"` 确认作业状态是否已进入 R（运行）。\\n\\n> **进阶**：`--gres=gpu:1` 表示申请 1 张任意类型 GPU。如需指定型号（如 5090），可写为 `--gres=gpu:5090:1`。用 `sinfo` 查看当前可用 GPU 类型。\\n> 参考：Slurm 速查 - 读取分区输出",
+      "related_errors": [
+        "Driver/library version mismatch"
+      ],
+      "references": [
+        "常见问题 - nvidia-smi",
+        "提交任务 - GPU 作业脚本模板"
+      ]
+    },
+    {
+      "id": "faq-004",
+      "category": "error_gpu",
+      "title": "nvidia-smi 报 Driver/library version mismatch",
+      "keywords": [
+        "Driver/library version mismatch",
+        "NVML",
+        "驱动版本",
+        "CUDA版本不匹配",
+        "nvidia-smi"
+      ],
+      "intents": [
+        "error_diagnosis"
+      ],
+      "question": "运行 nvidia-smi 报 Failed to initialize NVML: Driver/library version mismatch 怎么办？",
+      "answer": "这个错误通常是因为环境中安装的 NVIDIA 库与计算节点的显卡驱动不兼容。\n\n**最简单的方法**：\n1. 新建一个干净的 conda 环境，不要再手动安装任何 NVIDIA/CUDA 相关的包\n   ```bash\n   conda create -n clean_env python=3.10 -y\n   conda activate clean_env\n   ```\n2. 只通过 conda/pip 安装 PyTorch（让包管理器自动匹配驱动版本）\n3. 在作业脚本中激活新环境后，运行 `nvidia-smi` 验证\n\n**如果还是不行**：这通常说明是平台节点自身的问题，不是你的环境能解决的。请保存以下信息后联系平台管理员或课程助教：\n- 你的作业 ID\n- nvidia-smi 的完整报错截图\n- 你尝试了哪些 conda 环境\n- 节点名（在作业日志中可以找到）\n\n> **进阶**：这个错误的本质是 NVIDIA 驱动栈版本不匹配——系统中的 GPU 驱动版本与你 conda 环境中安装的 CUDA/NVML 库版本冲突。一般用户不需要深究，按上述方法排查即可。\n> 参考：常见问题 - Driver/library version mismatch",
+      "related_errors": [
+        "nvidia-smi 找不到 GPU"
+      ],
+      "references": [
+        "常见问题 - Driver/library version mismatch"
+      ]
+    },
+    {
+      "id": "faq-005",
+      "category": "error_oom",
+      "title": "CUDA out of memory (GPU 显存不足)",
+      "keywords": [
+        "CUDA out of memory",
+        "OOM",
+        "显存不足",
+        "CUDA_ERROR_OUT_OF_MEMORY",
+        "batch size",
+        "训练"
+      ],
+      "intents": [
+        "error_diagnosis"
+      ],
+      "question": "训练时报 CUDA out of memory 怎么办？",
+      "answer": "CUDA out of memory 表示 GPU 显存不足。\n\n**解决步骤（按优先级）**：\n1. 减小 batch size——这是最常见且有效的方案\n2. 减小模型规模或输入尺寸\n3. 使用梯度累积（gradient accumulation）模拟大 batch size\n4. 如果以上都不够，申请更高 QOS 获取更多 GPU（如 medium_2gpu 可申请 2 卡）\n\n**不要盲目增加资源**——先用小数据确认流程正确，再逐步扩大。",
+      "related_errors": [
+        "系统 OOM"
+      ],
+      "references": [
+        "常见问题 - 训练 OOM",
+        "平台资源 - 怎么估算资源"
+      ]
+    },
+    {
+      "id": "faq-006",
+      "category": "error_oom",
+      "title": "系统内存不足 (OOM)",
+      "keywords": [
+        "Killed",
+        "oom-killer",
+        "MemoryError",
+        "内存不足",
+        "OOM",
+        "--mem"
+      ],
+      "intents": [
+        "error_diagnosis"
+      ],
+      "question": "作业被 Killed 或报 MemoryError，为什么以及如何处理？",
+      "answer": "系统 OOM 可能由多种原因导致：\n\n**判断方法**：\n- 如果看到 `Killed` 伴随 `oom-killer` 日志 → 系统内存不足\n- 如果看到 `MemoryError` → Python 进程内存超限\n- 如果是数据加载慢但没 OOM → 可能是文件组织或 worker 设置问题\n\n**解决步骤**：\n1. 减少数据加载并发（降低 num_workers）\n2. 申请更多内存：`#SBATCH --mem=<memory>`\n3. 拆分大规模数据处理任务\n4. 减少 batch size（同时降低显存和内存压力）",
+      "related_errors": [
+        "CUDA out of memory"
+      ],
+      "references": [
+        "常见问题 - 训练 OOM",
+        "平台资源 - 怎么估算资源"
+      ]
+    },
+    {
+      "id": "faq-007",
+      "category": "error_script",
+      "title": "没有日志文件或日志为空",
+      "keywords": [
+        "没有日志",
+        "日志为空",
+        "日志乱码",
+        "logs/",
+        "-o",
+        "-e",
+        "标准输出"
+      ],
+      "intents": [
+        "error_diagnosis",
+        "job_submission"
+      ],
+      "question": "我的作业运行了但是没有日志文件，或者日志是空的？",
+      "answer": "常见原因：\n1. `logs/` 目录不存在\n2. `#SBATCH -o` 或 `#SBATCH -e` 路径写错\n3. 作业还没开始运行（仍在 PD 排队）\n4. 脚本在写日志前就被 Slurm 拒绝或取消\n5. 脚本没有运行到输出日志的位置就出错退出了\n\n**解决步骤**：\n1. 提交前运行 `mkdir -p logs`\n2. 检查脚本中日志路径是否正确：`#SBATCH -o logs/%x-%j.out`\n3. 用 `squeue -u \"$USER\"` 确认作业状态\n4. 用 `scontrol show job <job_id>` 查看作业失败原因",
+      "related_errors": [
+        "脚本语法错误",
+        "路径错误"
+      ],
+      "references": [
+        "提交任务 - 提交前检查",
+        "Slurm 速查 - 排查顺序"
+      ]
+    },
+    {
+      "id": "faq-008",
+      "category": "error_env",
+      "title": "conda 安装 PyTorch 后还是 CPU 版",
+      "keywords": [
+        "conda",
+        "PyTorch",
+        "CPU",
+        "GPU",
+        "torch.cuda.is_available",
+        "CONDA_OVERRIDE_CUDA"
+      ],
+      "intents": [
+        "error_diagnosis"
+      ],
+      "question": "用 conda 安装了 PyTorch，但 torch.cuda.is_available() 返回 False？",
+      "answer": "登录节点通常没有 GPU。如果在没有 GPU 的登录节点上安装 PyTorch，conda 可能默认解析出 CPU 版本。\n\n**解决步骤**：\n1. 清理原有环境\n2. 通过环境变量强制指定 CUDA 版本安装：\n   `CONDA_OVERRIDE_CUDA=\"12.4\" conda install pytorch torchvision torchaudio pytorch-cuda=12.4 -c pytorch -c nvidia -y`\n3. CUDA 版本应按当前平台驱动和课程要求选择，不要照抄 `12.4`\n4. 安装后在已申请 GPU 的作业中检查 `torch.cuda.is_available()`",
+      "related_errors": [
+        "作业里找不到 conda",
+        "CUDA 版本不匹配"
+      ],
+      "references": [
+        "常见问题 - conda PyTorch CPU版",
+        "环境配置"
+      ]
+    },
+    {
+      "id": "faq-009",
+      "category": "error_env",
+      "title": "批处理作业里找不到 conda",
+      "keywords": [
+        "conda",
+        "conda: command not found",
+        "conda activate",
+        "CommandNotFoundError",
+        "环境变量",
+        "找不到conda"
+      ],
+      "intents": [
+        "error_diagnosis",
+        "job_submission"
+      ],
+      "question": "我在交互式终端里能用 conda，但批处理作业报 conda: command not found？",
+      "answer": "交互式终端和批处理作业的环境初始化方式不同。批处理作业不会自动加载 conda 初始化脚本。\n\n**解决**：在作业脚本中显式写入 conda 初始化：\n```bash\nset +u\nsource ~/miniconda3/etc/profile.d/conda.sh\nconda activate py310\nset -u\n```\n\n如果你的 conda 安装在其他路径，请把 `~/miniconda3` 改成实际路径。不需要每次提交作业都重新安装环境。",
+      "related_errors": [
+        "conda PyTorch CPU版",
+        "ModuleNotFoundError"
+      ],
+      "references": [
+        "常见问题 - conda",
+        "环境配置"
+      ]
+    },
+    {
+      "id": "faq-010",
+      "category": "error_script",
+      "title": "CPU workers 设置与性能调优",
+      "keywords": [
+        "CPU workers",
+        "num_workers",
+        "dataloader",
+        "数据加载慢",
+        "GPU利用率低"
+      ],
+      "intents": [
+        "error_diagnosis"
+      ],
+      "question": "CPU workers 越多训练越快吗？我的数据加载特别慢怎么办？",
+      "answer": "不一定。worker 太少会喂不饱 GPU，太多也可能造成 CPU 争用、内存压力和文件系统压力。\n\n**建议**：\n1. 做小规模 benchmark，记录每组配置的单步时间、GPU 利用率和是否稳定\n2. 从 worker=2 或 4 开始测试\n3. 观察 GPU 利用率——如果出现周期性降到 0%，说明 CPU 加载跟不上 GPU\n4. 数据加载慢不一定是 worker 数问题——也可能是文件组织、存储 I/O 或网络文件系统延迟\n\n**不是所有程序都适合增加 worker**——先小数据验证再扩大。",
+      "related_errors": [
+        "系统 OOM"
+      ],
+      "references": [
+        "常见问题 - CPU workers",
+        "平台资源 - 怎么估算资源"
+      ]
+    },
+    {
+      "id": "faq-011",
+      "category": "error_script",
+      "title": "VS Code 中运行 Python 文件失败",
+      "keywords": [
+        "VS Code",
+        "运行失败",
+        "Python",
+        "解释器",
+        "conda activate",
+        "workspace"
+      ],
+      "intents": [
+        "error_diagnosis"
+      ],
+      "question": "在平台的 VS Code 中运行 Python 文件一直失败？",
+      "answer": "先确认三件事：\n1. 当前 VS Code 打开的 workspace 是代码所在文件夹\n2. 终端中已经 `conda activate <env>` 激活了正确的环境\n3. 运行命令时位于代码文件所在目录，必要时先 `cd /path/to/project`\n4. 如果使用右上角运行按钮，还要确认 VS Code 选择的是正确的 Python 解释器（Ctrl+Shift+P → Python: Select Interpreter）",
+      "related_errors": [
+        "作业里找不到 conda"
+      ],
+      "references": [
+        "常见问题 - VS Code Python",
+        "环境配置"
+      ]
+    },
+    {
+      "id": "faq-012",
+      "category": "error_script",
+      "title": "上传压缩包后大小不对或文件损坏",
+      "keywords": [
+        "压缩包",
+        "上传",
+        "大小不对",
+        "文件损坏",
+        "sha256sum",
+        "完整性"
+      ],
+      "intents": [
+        "error_diagnosis"
+      ],
+      "question": "上传的压缩包在平台上显示大小不对，解压后文件有问题？",
+      "answer": "如果上传后的压缩包大小明显小于本地文件，不要直接解压使用。\n\n**解决步骤**：\n1. 上传前记录本地文件大小\n2. 上传后在文件管理或 Shell 中确认远端文件大小\n3. 对重要文件生成校验值：本地和平台分别运行 `sha256sum 文件名`\n4. 如果大文件反复失败，尝试分卷压缩\n5. 改用平台推荐的传输方式（文件管理器上传或 Web GUI）",
+      "related_errors": [
+        "连不上 GitHub"
+      ],
+      "references": [
+        "常见问题 - 压缩包",
+        "文件与数据"
+      ]
+    },
+    {
+      "id": "faq-013",
+      "category": "error_script",
+      "title": "连不上 GitHub 或外网下载失败",
+      "keywords": [
+        "GitHub",
+        "外网",
+        "下载失败",
+        "git clone",
+        "pip install",
+        "镜像"
+      ],
+      "intents": [
+        "error_diagnosis"
+      ],
+      "question": "在平台上 git clone 或 pip install 一直失败？",
+      "answer": "可能原因包括平台网络策略、外部站点连接不稳定或仓库镜像不完整。\n\n**建议**：\n1. 优先使用中科大镜像源、PyPI/conda 镜像或课程提供的下载地址\n2. 代码仓库可以先在本地克隆，再打包上传到平台\n3. 大模型、数据集等外部资源不要假设平台能直接下载——先在本地准备好再上传\n、",
+      "related_errors": [
+        "上传压缩包大小不对"
+      ],
+      "references": [
+        "常见问题 - GitHub",
+        "文件与数据"
+      ]
+    },
+    {
+      "id": "faq-014",
+      "category": "error_script",
+      "title": "Slurm 脚本语法错误或 Invalid sbatch",
+      "keywords": [
+        "Invalid sbatch",
+        "语法错误",
+        "SyntaxError",
+        "ParseError",
+        "#!/bin/bash",
+        "SBATCH"
+      ],
+      "intents": [
+        "error_diagnosis",
+        "job_submission"
+      ],
+      "question": "提交 sbatch 脚本时报 Invalid sbatch 或语法错误？",
+      "answer": "常见 sbatch 脚本错误：\n1. 第一行缺少或写错 `#!/bin/bash`\n2. `#SBATCH` 指令写错——必须大写 `SBATCH`，`#` 和 `SBATCH` 之间不能有空格\n3. 参数值格式错误——时间格式必须是 `HH:MM:SS`，内存格式如 `16G`\n4. 脚本文件不是 Unix 行尾（Windows 记事本编辑后可能出现 `\\r\\n` 问题）\n5. 使用了当前 QOS 不支持的参数\n\n**解决**：参考提交任务页面的 GPU 作业脚本模板，确认所有字段正确后再提交。",
+      "related_errors": [
+        "QOSMaxWallDurationPerJobLimit"
+      ],
+      "references": [
+        "提交任务 - GPU 作业脚本模板",
+        "Slurm 速查 - 常用 SBATCH 字段"
+      ]
+    },
+    {
+      "id": "faq-015",
+      "category": "error_env",
+      "title": "ModuleNotFoundError / ImportError 依赖缺失",
+      "keywords": [
+        "ModuleNotFoundError",
+        "ImportError",
+        "找不到模块",
+        "pip install",
+        "依赖缺失",
+        "包未安装"
+      ],
+      "intents": [
+        "error_diagnosis"
+      ],
+      "question": "作业报 ModuleNotFoundError: No module named 'xxx'？",
+      "answer": "这表示 Python 环境中缺少对应的包。\n\n**解决步骤**：\n1. 确认当前激活的是正确的 conda 环境：`conda activate <env>`\n2. 在作业脚本中添加环境激活命令（参考\"作业里找不到 conda\"条目）\n3. 安装缺失的包：`pip install <package>` 或 `conda install <package>`\n4. 建议保留 `requirements.txt` 或 `environment.yml`，方便复现环境\n5. 注意区分：登录节点安装的包 ≠ 计算节点能用的包——确保在正确的环境中安装",
+      "related_errors": [
+        "作业里找不到 conda"
+      ],
+      "references": [
+        "常见问题 - conda",
+        "环境配置"
+      ]
+    },
+    {
+      "id": "faq-016",
+      "category": "status_queuing",
+      "title": "作业一直排队 (PD)",
+      "keywords": [
+        "排队",
+        "一直排队",
+        "PD",
+        "pending",
+        "waiting",
+        "资源紧张"
+      ],
+      "intents": [
+        "job_status"
+      ],
+      "question": "我的作业提交后一直显示 PD（排队），要等多久？",
+      "answer": "PD 表示作业在排队等待资源分配。可能原因：\n1. 平台当前资源紧张（高峰期排队人数多）\n2. 申请的 CPU、GPU、内存或时间过多——资源需求越大排队越久\n3. partition 或 QOS 与当前账号权限不匹配\n4. 触发了用户资源上限（例如已有作业在运行）\n\n**建议**：\n1. 先用更小资源跑 smoke test（1 CPU / 1 GPU / 短时间）\n2. 查看排队信息：`squeue -u \"$USER\"`\n3. 查看作业详情：`scontrol show job <job_id>` 看 Reason 字段\n4. 如果仍然排队，保存作业 ID 和 scontrol 输出后再求助",
+      "related_errors": [
+        "QOS 配额限制"
+      ],
+      "references": [
+        "Slurm 速查 - 作业状态",
+        "Slurm 速查 - 排查顺序"
+      ]
+    },
+    {
+      "id": "faq-017",
+      "category": "status_queuing",
+      "title": "作业状态 PD/R/CG/CD/F/CA 分别代表什么",
+      "keywords": [
+        "PD",
+        "R",
+        "CG",
+        "CD",
+        "F",
+        "CA",
+        "状态",
+        "作业状态",
+        "State"
+      ],
+      "intents": [
+        "job_status"
+      ],
+      "question": "squeue 里看到的作业状态 PD/R/CG/CD/F/CA 是什么意思？",
+      "answer": "Slurm 作业状态码含义：\n- **PD (PENDING)**：排队等待资源分配\n- **R (RUNNING)**：正在运行——查看日志确认是否正常输出\n- **CG (COMPLETING)**：正在收尾——等待输出文件落盘\n- **CD (COMPLETED)**：已完成——检查日志和结果\n- **F (FAILED)**：失败——先读 `.err` 和 `.out` 日志定位原因\n- **CA (CANCELLED)**：已取消——确认是否由自己或平台策略取消\n\n**排查**：`scontrol show job <job_id>` 可查看详细的失败/等待原因。",
+      "related_errors": [
+        "作业一直排队",
+        "作业失败"
+      ],
+      "references": [
+        "Slurm 速查 - 作业状态",
+        "Slurm 速查 - 排查顺序"
+      ]
+    },
+    {
+      "id": "faq-018",
+      "category": "status_running",
+      "title": "作业正在运行 (R) 但看不到输出",
+      "keywords": [
+        "R",
+        "running",
+        "运行中",
+        "看不到输出",
+        "日志不更新",
+        "卡住"
+      ],
+      "intents": [
+        "job_status"
+      ],
+      "question": "作业显示 R（运行中），但日志文件一直不更新或看不到输出？",
+      "answer": "可能原因：\n1. 输出被 Python 缓冲——在脚本中加 `export PYTHONUNBUFFERED=1` 或在 python 命令加 `-u` 参数\n2. 日志路径错误——`#SBATCH -o` 和实际的输出路径不一致\n3. 进程卡死——可能是死循环、资源不足或 I/O 阻塞\n4. 文件系统延迟——网络文件系统写入可能有延迟\n\n**排查**：\n1. `scontrol show job <job_id>` 看作业实际状态\n2. 检查 `.out` 和 `.err` 文件是否在预期位置",
+      "related_errors": [
+        "没有日志文件"
+      ],
+      "references": [
+        "Slurm 速查 - 排查顺序",
+        "提交任务 - 提交前检查"
+      ]
+    },
+    {
+      "id": "faq-019",
+      "category": "status_failed",
+      "title": "作业失败 (F) 怎么排查",
+      "keywords": [
+        "F",
+        "failed",
+        "失败",
+        "ExitCode",
+        "错误日志",
+        ".err"
+      ],
+      "intents": [
+        "job_status"
+      ],
+      "question": "我的作业状态显示 F（失败），该怎么排查？",
+      "answer": "按以下顺序排查：\n1. `scontrol show job <job_id>` ——查看 ExitCode 和 Reason 字段\n2. `tail -n 80 logs/<file>.err` ——查看错误日志\n3. `tail -n 80 logs/<file>.out` ——查看程序输出（可能包含错误栈）\n4. 常见 ExitCode 含义：\n   - 0:0 → 正常完成但不是预期的输出（检查代码逻辑）\n   - 非 0 → 程序异常退出（看 .err 文件）\n   - 因时间限制被杀死 → 增加 `-t` 时间或使用 long QOS\n\n**求助时请保存**：作业 ID、提交脚本、`.err` 和 `.out` 内容、资源申请参数。",
+      "related_errors": [
+        "没有日志文件",
+        "作业一直排队"
+      ],
+      "references": [
+        "Slurm 速查 - 排查顺序",
+        "常见问题 - 求助"
+      ]
+    },
+    {
+      "id": "faq-020",
+      "category": "job_cancel",
+      "title": "如何取消作业 (scancel)",
+      "keywords": [
+        "scancel",
+        "取消",
+        "cancel",
+        "删除作业",
+        "停止"
+      ],
+      "intents": [
+        "job_submission"
+      ],
+      "question": "我提交错了作业/作业卡死了，怎么取消？",
+      "answer": "使用 `scancel` 命令取消作业：\n```bash\nscancel <job_id>\n```\n\n- 取消单个作业：`scancel 12345`\n- 取消自己所有作业：`scancel -u \"$USER\"`\n- 取消特定状态的作业：按作业名取消等\n\n取消任务会停止正在排队或运行的作业。发现脚本写错、任务卡死或资源占用异常时，应及时取消释放资源。\n\n**查看作业 ID**：`squeue -u \"$USER\"`",
+      "related_errors": [],
+      "references": [
+        "提交任务 - 取消任务",
+        "Slurm 速查 - 常用命令"
+      ]
+    },
+    {
+      "id": "faq-021",
+      "category": "job_submission",
+      "title": "退出浏览器后任务会不会停",
+      "keywords": [
+        "退出",
+        "浏览器关闭",
+        "断线",
+        "tmux",
+        "交互式",
+        "批处理"
+      ],
+      "intents": [
+        "job_submission",
+        "job_status"
+      ],
+      "question": "我把浏览器关了，作业会不会停？远程连接断了怎么办？",
+      "answer": "分两种情况：\n\n**批处理作业 (sbatch)**：提交给 Slurm 后不依赖浏览器页面继续打开。浏览器关了作业照常运行。\n\n**交互式任务 (srun)**：Web 终端断线后，正在终端里跑的交互式作业可能受影响。\n\n**建议**：\n- 需要维持交互式会话时可以尝试 `tmux`（终端复用工具）\n- 长任务更推荐写成批处理作业——可复现、有日志、不依赖浏览器窗口",
+      "related_errors": [],
+      "references": [
+        "常见问题 - 退出浏览器",
+        "提交任务 - 交互式与批处理"
+      ]
+    },
+    {
+      "id": "faq-022",
+      "category": "job_interactive",
+      "title": "如何申请交互式调试会话",
+      "keywords": [
+        "srun",
+        "--pty",
+        "交互式",
+        "调试",
+        "bash",
+        "nvidia-smi"
+      ],
+      "intents": [
+        "job_submission"
+      ],
+      "question": "我想快速检查一下 GPU 是否可用，不用提交完整作业，怎么做？",
+      "answer": "使用 `srun` 申请一个短时间交互式调试会话：\n\n**CPU 调试**：\n```bash\nsrun -p Students --qos=qos_stu_default -c 1 -t 00:10:00 --pty bash\n```\n\n**GPU 调试**：\n```bash\nsrun -p Students --qos=qos_stu_default --gres=gpu:1 -c 1 -t 00:10:00 --pty bash\n```\n\n进入后运行检查：\n```bash\nhostname\npython -V\nnvidia-smi\n```\n\n**用完立即 `exit` 退出释放资源**——交互式会话也占用调度资源。如果命令显示排队，说明资源暂时没有立即分配。\\n\\n> **进阶**：`--gres=gpu:1` 中 `1` 可改为 2、4 等（不超过当前 QOS 上限）。如需指定型号可写为 `--gres=gpu:5090:1`。",
+      "related_errors": [],
+      "references": [
+        "Slurm 速查 - 交互式调试命令",
+        "提交任务 - 交互式与批处理"
+      ]
+    },
+    {
+      "id": "faq-023",
+      "category": "job_batch",
+      "title": "如何编写提交批处理作业脚本",
+      "keywords": [
+        "sbatch",
+        "批处理",
+        "脚本",
+        "提交作业",
+        "#!/bin/bash",
+        "SBATCH"
+      ],
+      "intents": [
+        "job_submission"
+      ],
+      "question": "我是新手，怎么写一个能提交到平台的作业脚本？",
+      "answer": "**最小作业脚本模板**（保存为 `scripts/hello.sbatch`）：\n```bash\n#!/bin/bash\n#SBATCH -J hello\n#SBATCH -o logs/%x-%j.out\n#SBATCH -e logs/%x-%j.err\n#SBATCH -t 00:05:00\n\nset -euo pipefail\ncd ~/projects/my-project\npython src/hello.py\n```\n\n提交：`sbatch scripts/hello.sbatch`\n查看：`squeue -u \"$USER\"`\n\n**GPU 作业**需额外加：\n```bash\n#SBATCH -p Students\n#SBATCH --qos=qos_stu_default\n#SBATCH --gres=gpu:1\n#SBATCH --cpus-per-task=4\n#SBATCH --mem=16G\n```\n\n默认配额 4CPU/1GPU/4h，第一次提交不要超过这个范围。\\n\\n> **进阶**：`--gres=gpu:1` 中的 `1` 表示卡片数，可改为 2 或更多（需对应 QOS 支持）。如需指定 GPU 型号：`--gres=gpu:5090:1` 或 `--gres=gpu:A100:1`。用 `sinfo` 查看可用 GPU 型号。\\n> 参考：Slurm 速查 - 常用 SBATCH 字段",
+      "related_errors": [
+        "Slurm 脚本语法错误"
+      ],
+      "references": [
+        "提交任务 - 最小作业脚本",
+        "提交任务 - GPU 作业脚本模板"
+      ]
+    },
+    {
+      "id": "faq-024",
+      "category": "permission_quota",
+      "title": "默认 QOS 配额说明 (4CPU/1GPU/4h)",
+      "keywords": [
+        "默认配额",
+        "4CPU",
+        "1GPU",
+        "4h",
+        "qos_stu_default",
+        "权限",
+        "配额",
+        "资源上限"
+      ],
+      "intents": [
+        "permission",
+        "job_submission"
+      ],
+      "question": "刚注册账号，我能用多少资源？有什么限制？",
+      "answer": "统一身份认证登录的同学默认配额：**4CPU / 1GPU / 4h**\n\n具体含义：\n- 默认 QOS 为 `qos_stu_default`\n- 单个作业最长运行 4 小时\n- 最多申请 1 张 GPU\n- 最多申请 4 个 CPU 核心\n- 默认内存约 16G（以平台当前界面为准）\n- 分区为 `Students`\n\n**提交作业时的 SBATCH 配置**：\n```bash\n#SBATCH -p Students\n#SBATCH --qos=qos_stu_default\n```",
+      "related_errors": [
+        "QOSMaxWallDurationPerJobLimit",
+        "QOSMaxCpuPerUserLimit"
+      ],
+      "references": [
+        "平台资源 - QOS 与资源上限",
+        "Slurm 速查 - 当前默认配置"
+      ]
+    },
+    {
+      "id": "faq-025",
+      "category": "permission_quota",
+      "title": "QOS 层级与资源上限完整表",
+      "keywords": [
+        "QOS",
+        "small",
+        "medium",
+        "long",
+        "cpu_long",
+        "资源方案",
+        "升级"
+      ],
+      "intents": [
+        "permission"
+      ],
+      "question": "除了默认的 4 小时，还有哪些 QOS 方案可以选择？",
+      "answer": "平台内置 QOS 方案（以 2026 年 5 月采集示例为准，实际请以平台页面为准）：\n\n| 方案 | QOS 名 | CPU | GPU | 内存 | 最长运行时间 | 适用场景 |\n|------|--------|-----|-----|------|-------------|----------|\n| default | qos_stu_default | 4 | 1 | 16G | 4h | 默认用户、小作业和调试 |\n| small | qos_stu_small | 8 | 1 | 32G | 8h | 课程实验、小模型训练 |\n| medium_2gpu | qos_stu_medium_2gpu | 24 | 2 | 128G | 12h | 双卡训练实验 |\n| long | qos_stu_long | 16 | 1 | 64G | 72h | 单卡长训练任务 |\n| cpu_long | qos_stu_cpu_long | 32 | 0 | 128G | 72h | CPU长任务、数据预处理 |\n\n**注意**：能看到列表不代表一定能用——需要先通过平台资源申请入口获取对应 QOS 授权。",
+      "related_errors": [
+        "默认配额说明"
+      ],
+      "references": [
+        "平台资源 - QOS 与资源上限",
+        "平台资源 - 当前状态示例"
+      ]
+    },
+    {
+      "id": "faq-026",
+      "category": "permission_quota",
+      "title": "如何申请更高算力",
+      "keywords": [
+        "申请算力",
+        "资源申请",
+        "QOS升级",
+        "更多GPU",
+        "更长时间",
+        "管理员审核"
+      ],
+      "intents": [
+        "permission"
+      ],
+      "question": "默认 4 小时/1 GPU 不够用，怎么申请更多资源？",
+      "answer": "通过平台的资源申请入口申请更高 QOS 方案：\n\n**流程**：\n1. 进入平台 [资源申请页面](https://107.ustc.edu.cn/apply)\n2. 选择适合任务的 QOS 方案（如 small 或 medium_2gpu）\n3. 填写任务用途、需要的时间范围和审核信息\n4. 如果课程或项目要求导师确认，填写导师姓名和邮箱；否则进入管理员审核\n5. 审核通过后，新 QOS 会发放到你的 Slurm 账号\n\n**申请前准备**：\n- 先在默认 QOS 下跑通 smoke test，确认流程正确\n- 准备任务说明（用途、预计资源需求、预计完成时间）\n- 准备导师或课程信息\n\n**申请通过后仍无法提交**：可能是未同步、分区不匹配或资源已满——联系管理员。",
+      "related_errors": [
+        "QOS 层级表",
+        "默认配额说明"
+      ],
+      "references": [
+        "平台资源 - 算力申请流程"
+      ]
+    },
+    {
+      "id": "faq-027",
+      "category": "permission_partition",
+      "title": "分区 (Partition) 选择指南",
+      "keywords": [
+        "分区",
+        "partition",
+        "Students",
+        "CPU-6530",
+        "GPU-RTX5090",
+        "选哪个",
+        "-p"
+      ],
+      "intents": [
+        "permission",
+        "job_submission"
+      ],
+      "question": "提交作业时要选分区 (partition)，我该选哪个？",
+      "answer": "平台分区说明（名称可能变化，以平台页面为准）：\n- **Students**：默认分区，大多数本科生作业使用\n- **CPU-6530**：CPU 计算专用分区\n- **GPU-RTX5090**：GPU 计算专用分区\n\n**选择原则**：\n1. 默认使用 `#SBATCH -p Students`\n2. 用 `scontrol show part` 查看所有分区及限制\n3. 用 `sinfo` 查看各分区当前空闲节点数——选空闲多的提交更快\n\n**分区状态**（sinfo 输出）：\n- `idle`：节点空闲，更容易分配资源\n- `mix`：部分占用\n- `comp`：资源较满\n- `down/drng`：不可用",
+      "related_errors": [
+        "QOS 层级表"
+      ],
+      "references": [
+        "Slurm 速查 - 读取分区输出",
+        "平台概览"
+      ]
+    },
+    {
+      "id": "faq-028",
+      "category": "permission_access",
+      "title": "不能 SSH 登录平台",
+      "keywords": [
+        "SSH",
+        "登录",
+        "ssh",
+        "远程连接",
+        "权限"
+      ],
+      "intents": [
+        "permission"
+      ],
+      "question": "我可以用本地 SSH 直接登录平台吗？",
+      "answer": "当前文档的主线流程以 Web GUI、文件管理和登录集群 Shell 操作为准。\n\n如果平台页面或课程通知没有提供 SSH 入口，不要假设可以直接用本地 `ssh` 登录。\n\n**替代方案**：\n- 使用平台 Web 终端（登录集群 → Shell）\n- 使用 VS Code 远程开发环境\n- 使用 Web GUI 的文件管理上传和查看文件\n- 如果需要传文件，优先使用平台文件管理功能",
+      "related_errors": [],
+      "references": [
+        "常见问题 - SSH",
+        "快速开始"
+      ]
+    },
+    {
+      "id": "faq-029",
+      "category": "permission_access",
+      "title": "登录账号或密码不确定",
+      "keywords": [
+        "账号",
+        "密码",
+        "登录",
+        "统一身份认证",
+        "忘记密码"
+      ],
+      "intents": [
+        "permission"
+      ],
+      "question": "我忘记平台密码了/不确定用什么账号登录？",
+      "answer": "账号和登录方式以平台页面、课程通知或助教说明为准。\n- 平台通常使用学校统一身份认证登录\n- 用户名为学号（字母小写）\n- 如果仍无法登录，不要反复尝试大量密码\n- 应按课程或平台通知联系助教或管理员重置",
+      "related_errors": [],
+      "references": [
+        "常见问题 - 账号密码",
+        "平台概览"
+      ]
+    },
+    {
+      "id": "faq-030",
+      "category": "permission_access",
+      "title": "求助时应提供什么信息",
+      "keywords": [
+        "求助",
+        "反馈",
+        "Bug",
+        "报错",
+        "提供信息",
+        "作业ID",
+        "日志"
+      ],
+      "intents": [
+        "permission"
+      ],
+      "question": "在群里或找助教求助时，我应该提供哪些信息？",
+      "answer": "遇到问题时，建议先保存这些信息再求助：\n- 你在哪一步遇到问题（完整操作步骤）\n- **作业 ID**（在 `squeue` 或作业列表中可查看）\n- **提交脚本**的内容\n- `.out` 和 `.err` **日志文件的关键内容**（特别是最后的错误信息）\n- **资源申请参数**：申请的 CPU、GPU、内存和运行时间\n- **你已经尝试过的排查动作**（例如已检查 conda 环境、已确认 GPU 申请等）\n- 代码、数据和输出文件所在路径（注意遮挡个人信息）\n\n提供完整信息能大幅提高排查效率。",
+      "related_errors": [],
+      "references": [
+        "常见问题 - 求助准备",
+        "Slurm 速查 - 排查顺序"
+      ]
+    },
+    {
+      "id": "faq-031",
+      "category": "permission_qos",
+      "title": "提交作业时报 Invalid qos specification",
+      "keywords": [
+        "Invalid qos",
+        "invalid qos specification",
+        "提交失败",
+        "QOS 未授权",
+        "QOS 未同步",
+        "DefaultQOS",
+        "账号授权"
+      ],
+      "intents": [
+        "error_diagnosis",
+        "job_submission"
+      ],
+      "question": "为什么我 sbatch 提交作业时报 \"sbatch: error: Batch job submission failed: Invalid qos specification\"？",
+      "answer": "这个报错表示提交时指定的 QOS 对当前账号不可用或未正确关联。\n\n**常见原因**：\n1. **账号 QOS 关联未同步**：分区 AllowQos 里虽有该 QOS，但你的账号（Association）尚未被授予或同步到该 QOS。这是最常见原因，尤其是新账号或刚申请资源后。\n2. **写错了 QOS 名**：手填的 QOS 名与平台实际不符。\n3. **默认 QOS 未赋值**：账号没有默认 QOS（DefaultQOS 为空）。\n\n**排查步骤**：\n1. 先查分区允许的 QOS：`scontrol show partition Students`（看 AllowQos 字段）\n2. 尝试去掉 `--qos` 用默认提交；若仍报错，说明账号关联问题而非名字问题\n3. 查你的 QOS 授权：`sacctmgr show user $USER format=User,QOS`\n\n**解决**：多半需要平台侧确认账号的 Slurm QOS 关联是否已同步。保存提交命令、作业申请信息和报错原文，联系平台管理员或助教确认账号授权。",
+      "related_errors": [
+        "QOSMaxWallDurationPerJobLimit",
+        "QOSMaxCpuPerUserLimit"
+      ],
+      "references": [
+        "平台资源 - 算力申请流程",
+        "Slurm 速查 - 当前默认配置"
+      ]
+    }
+  ]
+}

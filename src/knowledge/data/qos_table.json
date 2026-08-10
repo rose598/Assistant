@@ -1,0 +1,86 @@
+{
+  "qos": [
+    {
+      "name": "qos_stu001",
+      "display": "stu001",
+      "cpu": 1920,
+      "gpu": 200,
+      "memory": "",
+      "max_walltime": "1-00:00:00",
+      "max_walltime_hours": 24,
+      "description": "学生高配额 QOS（cpu=1920, gpu=200）；命令未体现内存上限，以平台实际为准"
+    },
+    {
+      "name": "qos_stu_default",
+      "display": "default",
+      "cpu": 4,
+      "gpu": 1,
+      "memory": "16G",
+      "max_walltime": "04:00:00",
+      "max_walltime_hours": 4,
+      "description": "默认用户、小作业和调试任务"
+    },
+    {
+      "name": "qos_stu_small",
+      "display": "small",
+      "cpu": 8,
+      "gpu": 1,
+      "memory": "32G",
+      "max_walltime": "08:00:00",
+      "max_walltime_hours": 8,
+      "description": "课程实验、小模型训练"
+    },
+    {
+      "name": "qos_stu_medium",
+      "display": "medium",
+      "cpu": 16,
+      "gpu": 1,
+      "memory": "64G",
+      "max_walltime": "1-00:00:00",
+      "max_walltime_hours": 24,
+      "description": "常规单卡任务"
+    },
+    {
+      "name": "qos_stu_medium_2gpu",
+      "display": "medium_2gpu",
+      "cpu": 24,
+      "gpu": 2,
+      "memory": "128G",
+      "max_walltime": "1-00:00:00",
+      "max_walltime_hours": 24,
+      "description": "双卡训练实验"
+    },
+    {
+      "name": "qos_stu_long",
+      "display": "long",
+      "cpu": 16,
+      "gpu": 1,
+      "memory": "64G",
+      "max_walltime": "3-00:00:00",
+      "max_walltime_hours": 72,
+      "description": "单卡长训练任务"
+    },
+    {
+      "name": "qos_stu_cpu_long",
+      "display": "cpu_long",
+      "cpu": 32,
+      "gpu": 0,
+      "memory": "128G",
+      "max_walltime": "3-00:00:00",
+      "max_walltime_hours": 72,
+      "description": "CPU 长任务、数据预处理"
+    },
+    {
+      "name": "qos_stu_large",
+      "display": "large",
+      "cpu": 48,
+      "gpu": 4,
+      "memory": "240G",
+      "max_walltime": "12:00:00",
+      "max_walltime_hours": 12,
+      "description": "大型任务（高 CPU/GPU/内存配额）"
+    }
+  ],
+  "default_qos": "qos_stu_default",
+  "partitions": ["Students", "CPU-6530", "GPU-RTX5090"]
+}
