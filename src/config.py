@@ -151,6 +151,8 @@ class Config:
         fuzzy_match_threshold: int | None = None,
         intent_keyword_threshold: float | None = None,
         intent_llm_fallback_threshold: float | None = None,
+        rule_conf_threshold: float | None = None,
+        llm_conf_threshold: float | None = None,
     ) -> None:
         # LLM: 真实平台变量 AGENT_LLM_* 优先，回退到模块级 LLM_*
         self.llm_base_url = (
@@ -240,6 +242,15 @@ class Config:
         self.intent_llm_fallback_threshold = (
             intent_llm_fallback_threshold if intent_llm_fallback_threshold is not None
             else float(_get("INTENT_LLM_THRESHOLD", "0.3"))
+        )
+        # 日志分类阈值（规则优先 + LLM 兜底）
+        self.rule_conf_threshold = (
+            rule_conf_threshold if rule_conf_threshold is not None
+            else float(_get("RULE_CONF_THRESHOLD", "0.6"))
+        )
+        self.llm_conf_threshold = (
+            llm_conf_threshold if llm_conf_threshold is not None
+            else float(_get("LLM_CONF_THRESHOLD", "0.5"))
         )
 
     def resolve_path(self, path: str | Path) -> Path:
