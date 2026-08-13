@@ -153,6 +153,9 @@ class Config:
         intent_llm_fallback_threshold: float | None = None,
         rule_conf_threshold: float | None = None,
         llm_conf_threshold: float | None = None,
+        idle_gpu_ratio_threshold: float | None = None,
+        prediction_window_secs: int | None = None,
+        prediction_cold_start: float | None = None,
     ) -> None:
         # LLM: 真实平台变量 AGENT_LLM_* 优先，回退到模块级 LLM_*
         self.llm_base_url = (
@@ -251,6 +254,19 @@ class Config:
         self.llm_conf_threshold = (
             llm_conf_threshold if llm_conf_threshold is not None
             else float(_get("LLM_CONF_THRESHOLD", "0.5"))
+        )
+        # 监控/预测（第 4 周周二 idle_detector / prediction）
+        self.idle_gpu_ratio_threshold = (
+            idle_gpu_ratio_threshold if idle_gpu_ratio_threshold is not None
+            else float(_get("IDLE_GPU_RATIO_THRESHOLD", "0.6"))
+        )
+        self.prediction_window_secs = (
+            prediction_window_secs if prediction_window_secs is not None
+            else int(_get("PREDICTION_WINDOW_SECS", str(7 * 86400)))
+        )
+        self.prediction_cold_start = (
+            prediction_cold_start if prediction_cold_start is not None
+            else float(_get("PREDICTION_COLD_START", "0.5"))
         )
 
     def resolve_path(self, path: str | Path) -> Path:
