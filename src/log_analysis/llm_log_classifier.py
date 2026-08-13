@@ -153,12 +153,14 @@ class LLMLogClassifier:
         confidence: float,
         signals: list[str],
     ) -> ErrorClassification:
+        # 给 LLM 来源的命中共加 "LLM:" 前缀, 便于 API/调用方区分规则 vs LLM 判定
+        prefixed = [f"LLM:{s}" for s in signals] if signals else [f"LLM分类[{subtype}]"]
         return ErrorClassification(
             record=record,
             category=category,
             subtype=subtype,
             confidence=confidence,
-            signals_hit=signals or [f"LLM分类[{subtype}]"],
+            signals_hit=prefixed,
         )
 
     def classify(self, record: JobRecord) -> ErrorClassification:

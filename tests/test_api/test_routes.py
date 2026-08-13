@@ -84,10 +84,14 @@ class TestDiagnose:
         assert j["data_source"] in ("mock", "ssh")
 
     def test_diagnose_oom_job(self, client: TestClient) -> None:
-        # 1003 = GPU OOM
+        # 1003 = GPU OOM（规则可判）
         r = client.get("/api/jobs/1003/diagnose")
         assert r.status_code == 200
-        assert r.json()["diagnosis"]["category"] == "oom"
+        j = r.json()["diagnosis"]
+        assert j["category"] == "oom"
+        # 双判已接入: 无真实 LLM 时规则可判样本回到规则通道(向后兼容), channel 字段存在
+        assert "channel" in j
+        assert j["channel"] in ("rule", "llm", "fallback")
 
     def test_diagnose_not_found(self, client: TestClient) -> None:
         r = client.get("/api/jobs/999999/diagnose")
