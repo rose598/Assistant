@@ -124,7 +124,7 @@ class SchedulerStatus(BaseModel):
 
 _flow_ctx: FlowContext | None = None
 _flow_scheduler: Scheduler | None = None
-_bg_task: asyncio.Task[int] | None = None
+_flow_bg_loop: asyncio.Task[int] | None = None
 
 
 def get_flow_context() -> FlowContext:
@@ -249,7 +249,7 @@ async def scheduler_status() -> SchedulerStatus:
     sched = get_flow_scheduler()
     return SchedulerStatus(
         enabled=bool(get_config().background_scheduler_enabled),
-        running=_bg_task is not None and not _bg_task.done(),
+        running=_flow_bg_loop is not None and not _flow_bg_loop.done(),
         ticks=sched.ticks,
         jobs=[
             SchedulerJobInfo(
@@ -265,20 +265,34 @@ async def scheduler_status() -> SchedulerStatus:
 
 # ---- 后台墙钟调度注册（开关关闭时完全 no-op） ----------------------------------
 
+
+def start_background_task() -> None:
+    """启动后台墙钟调度循环（1 tick = 1 分钟），幂等：已启动则直接复用。
+
+    说明：Starlette/FastAPI 某些版本（实测 0.139.2 / 1.3.1）会把 router 级
+    ``on_event("startup")`` 触发两次（include_router 合并事件时挂两份），
+    导致 scheduler 单例上跑起 2 个 ``run_loop``、``ticks`` 计数 2×、任务触发周期减半。
+    本函数对 ``_flow_bg_loop`` 做幂等守卫：无论框架触发几次，后台循环只启动一个。
+    """
+    global _flow_bg_loop
+    if _flow_bg_loop is not None and not _flow_bg_loop.done():
+        return
+    _flow_bg_loop = asyncio.create_task(get_flow_scheduler().run_loop(tick_seconds=60.0))
+
+
 if get_config().background_scheduler_enabled:
 
     @router.on_event("startup")
     async def _start_background_scheduler() -> None:
-        """启动后台墙钟调度循环（1 tick = 1 分钟，绝对时刻对齐）。"""
-        global _bg_task
-        _bg_task = asyncio.create_task(get_flow_scheduler().run_loop(tick_seconds=60.0))
+        """启动后台墙钟调度循环（幂等，防框架对 router on_event 的双触发）。"""
+        start_background_task()
 
     @router.on_event("shutdown")
     async def _stop_background_scheduler() -> None:
         """停止后台调度循环并等待退出。"""
-        global _bg_task
-        if _bg_task is not None:
-            _bg_task.cancel()
+        global _flow_bg_loop
+        if _flow_bg_loop is not None:
+            _flow_bg_loop.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
-                await _bg_task
-            _bg_task = None
+                await _flow_bg_loop
+            _flow_bg_loop = None
