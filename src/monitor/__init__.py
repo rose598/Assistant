@@ -6,10 +6,13 @@
 - ``QueueMonitor`` / ``QueueReport`` / ``PartitionQueue``：排队拥堵预警（queue_monitor.py）
 - ``Notifier`` / ``Notification`` / ``SendResult``：三通道推送（notifier.py）
 - ``Scheduler`` / ``cron_to_minutes``：定时调度器（scheduler.py，零依赖自实现）
-
-auto_fix_cmd 由后续第 4 周任务补齐。
+- ``AutoFixCmd`` / ``AutoFixResult``：一键修复命令（auto_fix_cmd.py）
 """
 
+from src.monitor.auto_fix_cmd import (
+    AutoFixCmd,
+    AutoFixResult,
+)
 from src.monitor.idle_detector import (
     DataSource,
     IdleDetector,
@@ -43,6 +46,8 @@ from src.monitor.scheduler import (
 )
 
 __all__ = [
+    "AutoFixCmd",
+    "AutoFixResult",
     "CHANNELS",
     "DEFAULT_COLD_START",
     "DEFAULT_WINDOW_DAYS",
