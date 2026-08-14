@@ -24,7 +24,9 @@ from fastapi.testclient import TestClient
 from src.api import routes_flow
 from src.flow.flow_scheduler import build_monitor_scheduler
 from src.flow.pipeline_flow import FlowContext, run_fix_flow, run_monitor_checks
+from src.log_analysis.classifier import ErrorClassification
 from src.log_analysis.commands import JobRecord, parse_sinfo, parse_squeue
+from src.log_analysis.llm_log_classifier import DualLogClassifier
 from src.main import app
 from src.monitor.idle_detector import IdleDetector
 from src.monitor.notifier import (
@@ -73,6 +75,33 @@ def _failed_record(reason: str, job_id: str = "2001", exit_code: str = "1:0") ->
     )
 
 
+class _UnknownLLMStub:
+    """确定性 LLM 桩：总是返回 unknown（零环境耦合，不触真实 LLM/网络）。
+
+    用途：隔离 ``test_unknown_fallback_no_throw`` —— 该测试原本用默认
+    ``DualLogClassifier``（规则判 unknown 后会调真实 LLM），一旦环境存在
+    ``AGENT_LLM_*``/``.env`` 真实 key，真实 qwen 偶发把 ``exit_code=42:0``
+    判成 ``script/dependency_error``，导致断言不稳定。注入本桩后，
+    规则 unknown → LLM 兜底仍返回 unknown → 稳定回退未知，与外部环境无关。
+    """
+
+    _threshold = 0.5  # DualLogClassifier 读取的 LLM 置信阈值
+
+    async def aclassify(self, record: JobRecord) -> ErrorClassification:
+        return ErrorClassification(
+            record=record,
+            category="unknown",
+            subtype="unknown",
+            confidence=0.0,
+            signals_hit=[],
+        )
+
+
+def _deterministic_unknown_classifier() -> DualLogClassifier:
+    """构造规则 + 确定性 unknown-LLM 的双判分类器（不依赖环境 key）。"""
+    return DualLogClassifier(llm_classifier=_UnknownLLMStub())
+
+
 # ---- 场景 1-6：一键修复链路（分类→命令→推送） ---------------------------------
 
 
@@ -117,7 +146,11 @@ class TestFixFlowScenarios:
 class TestFixFlowUnknown:
     async def test_unknown_fallback_no_throw(self) -> None:
         notifier, _ = _recording_notifier()
-        ctx = FlowContext(notifier=notifier)
+        # 注入确定性 unknown-LLM 桩：即便环境存在真实 AGENT_LLM_* key，也不触真实
+        # LLM，保证 unknown 兜底断言与外部环境无关（此前会偶发受真实 qwen 影响）。
+        ctx = FlowContext(
+            notifier=notifier, classifier=_deterministic_unknown_classifier()
+        )
         rec = _failed_record("mysterious transient glitch", exit_code="42:0")
         result = await run_fix_flow(rec, ctx)
 
