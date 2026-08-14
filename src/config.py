@@ -94,6 +94,11 @@ QUEUE_CONGEST_THRESHOLD: int = 20  # 排队数阈值
 QUEUE_WAIT_THRESHOLD: int = 30  # 平均等待时间阈值（分钟）
 IDLE_GPU_RATIO_THRESHOLD: float = 0.6  # 空闲GPU节点占比阈值
 
+# 后台墙钟调度总开关（默认关：测试/导入 app 不启动后台循环，真实部署再开）
+BACKGROUND_SCHEDULER_ENABLED: bool = _get(
+    "BACKGROUND_SCHEDULER_ENABLED", "false"
+).strip().lower() in ("1", "true", "yes")
+
 # ──────────────────────────────────────────────
 # 推送通道配置
 # ──────────────────────────────────────────────
@@ -158,6 +163,7 @@ class Config:
         prediction_cold_start: float | None = None,
         queue_congest_threshold: int | None = None,
         queue_wait_threshold: float | None = None,
+        background_scheduler_enabled: bool | None = None,
     ) -> None:
         # LLM: 真实平台变量 AGENT_LLM_* 优先，回退到模块级 LLM_*
         self.llm_base_url = (
@@ -278,6 +284,12 @@ class Config:
         self.queue_wait_threshold = (
             queue_wait_threshold if queue_wait_threshold is not None
             else float(_get("QUEUE_WAIT_THRESHOLD", "30"))
+        )
+        # 后台墙钟调度总开关（默认 False；开启需显式传参或环境变量）
+        self.background_scheduler_enabled = (
+            background_scheduler_enabled if background_scheduler_enabled is not None
+            else _get("BACKGROUND_SCHEDULER_ENABLED", "false").strip().lower()
+            in ("1", "true", "yes")
         )
 
     def resolve_path(self, path: str | Path) -> Path:
