@@ -92,7 +92,7 @@ class TestParseScontrol:
 class TestIsFailed:
     """is_failed 判定测试类."""
 
-    def test_F_true(self) -> None:
+    def test_f_true(self) -> None:
         assert JobRecord(job_state="F").is_failed is True
 
     def test_exitcode_nonzero(self) -> None:
