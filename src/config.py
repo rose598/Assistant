@@ -156,6 +156,8 @@ class Config:
         idle_gpu_ratio_threshold: float | None = None,
         prediction_window_secs: int | None = None,
         prediction_cold_start: float | None = None,
+        queue_congest_threshold: int | None = None,
+        queue_wait_threshold: float | None = None,
     ) -> None:
         # LLM: 真实平台变量 AGENT_LLM_* 优先，回退到模块级 LLM_*
         self.llm_base_url = (
@@ -267,6 +269,15 @@ class Config:
         self.prediction_cold_start = (
             prediction_cold_start if prediction_cold_start is not None
             else float(_get("PREDICTION_COLD_START", "0.5"))
+        )
+        # 排队拥堵预警（第 4 周 queue_monitor）：排队数 > 阈值 或 平均等待 > 阈值(分钟)
+        self.queue_congest_threshold = (
+            queue_congest_threshold if queue_congest_threshold is not None
+            else int(_get("QUEUE_CONGEST_THRESHOLD", "20"))
+        )
+        self.queue_wait_threshold = (
+            queue_wait_threshold if queue_wait_threshold is not None
+            else float(_get("QUEUE_WAIT_THRESHOLD", "30"))
         )
 
     def resolve_path(self, path: str | Path) -> Path:
