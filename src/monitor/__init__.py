@@ -5,8 +5,9 @@
 - ``IdlePrediction``：空闲时段预测（prediction.py）
 - ``QueueMonitor`` / ``QueueReport`` / ``PartitionQueue``：排队拥堵预警（queue_monitor.py）
 - ``Notifier`` / ``Notification`` / ``SendResult``：三通道推送（notifier.py）
+- ``Scheduler`` / ``cron_to_minutes``：定时调度器（scheduler.py，零依赖自实现）
 
-scheduler 由后续第 4 周任务补齐。
+auto_fix_cmd 由后续第 4 周任务补齐。
 """
 
 from src.monitor.idle_detector import (
@@ -35,6 +36,11 @@ from src.monitor.queue_monitor import (
     QueueReport,
     parse_wait_seconds,
 )
+from src.monitor.scheduler import (
+    JobSpec,
+    Scheduler,
+    cron_to_minutes,
+)
 
 __all__ = [
     "CHANNELS",
@@ -45,14 +51,17 @@ __all__ = [
     "IdleDetector",
     "IdlePrediction",
     "IdleReport",
+    "JobSpec",
     "Notification",
     "Notifier",
     "PartitionQueue",
     "PartitionState",
     "QueueMonitor",
     "QueueReport",
+    "Scheduler",
     "SendResult",
     "WeComBotChannel",
     "WebSocketChannel",
+    "cron_to_minutes",
     "parse_wait_seconds",
 ]
