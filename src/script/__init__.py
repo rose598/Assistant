@@ -6,6 +6,7 @@
 - ``ScriptGenerator``：模板脚本生成器（generator.py）；
 - ``ScriptDiffer`` / ``DiffSummary``：差分显示（differ.py，A 自测）；
 - ``FieldSuggester``：字段建议器（field_suggester.py，A 自测）；
+- ``ScriptExporter``：一键导出（exporter.py，A 自测）；
 - ``RewriteState`` / ``RewriteContext`` / ``ScriptRewriteFlow``：对话式
   脚本改写流程（rewrite_flow.py，对应原计划 dialog/flow.py，
   按脚本域归属落位）。
@@ -14,6 +15,7 @@
 """
 
 from src.script.differ import DiffSummary, ScriptDiffer
+from src.script.exporter import ScriptExporter
 from src.script.field_suggester import FieldSuggester
 from src.script.generator import ScriptGenerator
 from src.script.parser import SbatchParser
@@ -27,6 +29,7 @@ __all__ = [
     "RewriteState",
     "SbatchParser",
     "ScriptDiffer",
+    "ScriptExporter",
     "ScriptGenerator",
     "ScriptRewriteFlow",
     "ScriptTemplate",
