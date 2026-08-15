@@ -19,10 +19,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from src.config import get_config
-from src.log_analysis.classifier import ErrorClassifier
+from src.log_analysis.classifier import ErrorClassification
 from src.log_analysis.commands import JobRecord, LogCommandClient
 from src.log_analysis.diagnoser import JobDiagnoser
 from src.log_analysis.fix_generator import FixGenerator
+from src.log_analysis.llm_log_classifier import DualLogClassifier
 from src.log_analysis.mock_executor import MockExecutor
 from src.log_analysis.ssh_client import SSHNotConfiguredError
 
@@ -54,6 +55,7 @@ class DiagnoseInfo(BaseModel):
     advice: str
     commands: list[str] = []
     reason: str = ""
+    channel: str = "rule"  # rule / llm / fallback（规则优先+LLM兜底）
 
 
 class DiagnoseResponse(BaseModel):
@@ -87,6 +89,28 @@ def _to_job_info(rec: JobRecord) -> JobInfo:
         qos=rec.qos or "",
         node_list=rec.node_list or "",
     )
+
+
+# ---- 规则+LLM 双判分类器（懒加载单例） ---------------------------------------
+
+_dual: DualLogClassifier | None = None
+
+
+def _get_dual_classifier() -> DualLogClassifier:
+    """懒加载双判分类器单例（规则优先 + LLM 兜底；LLM 不可用时自动回退规则）. """
+    global _dual
+    if _dual is None:
+        _dual = DualLogClassifier()
+    return _dual
+
+
+def _channel_of(cls: ErrorClassification) -> str:
+    """由分类结果推断来源通道: rule / llm / fallback."""
+    if any(s.startswith("LLM") for s in cls.signals_hit):
+        return "llm"
+    if not cls.is_known or cls.category == "unknown":
+        return "fallback"
+    return "rule"
 
 
 # ---- 查询作业列表 -----------------------------------------------------------
@@ -137,9 +161,9 @@ async def diagnose_job(job_id: str) -> DiagnoseResponse:
     if rec is None:
         raise HTTPException(status_code=404, detail=f"作业 {job_id} 不存在")
 
-    # 三层分析
+    # 三层分析：诊断 + 规则优先/LLM兜底双判分类 + 修复建议
     diag = JobDiagnoser().diagnose(rec)
-    cls = ErrorClassifier().classify(rec)
+    cls = await _get_dual_classifier().aclassify(rec)
     fix = FixGenerator().generate(cls)
 
     return DiagnoseResponse(
@@ -153,6 +177,7 @@ async def diagnose_job(job_id: str) -> DiagnoseResponse:
             advice=fix.advice,
             commands=fix.commands,
             reason=diag.reason_text,
+            channel=_channel_of(cls),
         ),
         data_source=data_source,
     )

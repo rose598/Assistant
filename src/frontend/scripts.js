@@ -7,6 +7,13 @@
     var form = document.getElementById("ask-form");
     var input = document.getElementById("question");
 
+    // 会话 ID: 首次生成并持久化到 localStorage, 多轮对话保持同一 session
+    var sessionId = localStorage.getItem("ask_session_id");
+    if (!sessionId) {
+        sessionId = "web-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+        localStorage.setItem("ask_session_id", sessionId);
+    }
+
     // marked 配置: 启用 GFM, 代码高亮交给 highlight 处理
     if (window.marked) {
         marked.setOptions({ gfm: true, breaks: true });
@@ -107,34 +114,95 @@
         chat.scrollTop = chat.scrollHeight;
     }
 
+    // 解析 SSE 事件流: 逐段 (data:) 文本, 返回事件数组
+    async function readSse(resp) {
+        var reader = resp.body.getReader();
+        var decoder = new TextDecoder("utf-8");
+        var buffer = "";
+        var events = [];
+        while (true) {
+            var r = await reader.read();
+            if (r.done) { break; }
+            buffer += decoder.decode(r.value, { stream: true });
+            var lines = buffer.split("\n");
+            buffer = lines.pop(); // 保留未以换行结尾的残片
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                if (line.indexOf("data:") !== 0) { continue; }
+                var payload = line.slice(5).trim();
+                if (payload === "[DONE]") { return events; }
+                try { events.push(JSON.parse(payload)); } catch (e) { /* 忽略 */ }
+            }
+        }
+        return events;
+    }
+
+    // 尝试流式问答; 失败(如接口不可用)时回退到非流式 POST
+    async function askStream(question, botMsg) {
+        var resp = await fetch("/api/ask/stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: question, session_id: sessionId })
+        });
+        if (!resp.ok || !resp.body) { return null; }
+        var events = await readSse(resp);
+        var parts = [];
+        events.forEach(function (ev) {
+            if (ev.type === "token") { parts.push(ev.content || ""); }
+        });
+        var text = parts.join("");
+        // 逐段渲染(打字机效果): 直接渲染累积文本
+        if (text) { botMsg.querySelector(".bubble").innerHTML = renderMarkdown(text); }
+        return text;
+    }
+
     async function ask(question) {
         addMessage("user", question);
-        addTyping();
+        var botMsg = addTyping();
         input.value = "";
+        var fullAnswer = "";
         try {
-            var resp = await fetch("/api/ask", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ question: question })
-            });
-            removeTyping();
-            if (!resp.ok) {
-                var detail = "请求失败 (" + resp.status + ")";
-                try {
-                    var j = await resp.json();
-                    if (j && j.detail) { detail = j.detail; }
-                } catch (e) { /* 忽略 */ }
-                addMessage("bot", "⚠️ " + detail);
-                return;
+            var streamed = await askStream(question, botMsg);
+            if (streamed) {
+                // 流式路径: askStream 已将文本渲染到 botMsg.bubble, 只需去掉 typing 动画
+                fullAnswer = streamed;
+                botMsg.classList.remove("typing");
+                botMsg.removeAttribute("id");
+            } else {
+                // 回退: 非流式 POST /api/ask (typing 元素保留, 复用为回复容器)
+                var resp = await fetch("/api/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ question: question, session_id: sessionId })
+                });
+                if (!resp.ok) {
+                    var detail = "请求失败 (" + resp.status + ")";
+                    try {
+                        var j = await resp.json();
+                        if (j && j.detail) { detail = j.detail; }
+                    } catch (e) { /* 忽略 */ }
+                    botMsg.classList.remove("typing");
+                    botMsg.removeAttribute("id");
+                    botMsg.querySelector(".bubble").innerHTML = escapeHtml("⚠️ " + detail);
+                    return;
+                }
+                var data = await resp.json();
+                fullAnswer = data.answer || "(无回答)";
+                var reply = fullAnswer;
+                if (data.sources && data.sources.length) {
+                    reply += "\n\n**参考来源**: " + data.sources.join("、");
+                }
+                botMsg.classList.remove("typing");
+                botMsg.removeAttribute("id");
+                botMsg.querySelector(".bubble").innerHTML = renderMarkdown(reply);
             }
-            var data = await resp.json();
-            var text = data.answer || "(无回答)";
-            var reply = text;
-            if (data.sources && data.sources.length) {
-                reply += "\n\n**参考来源**: " + data.sources.join("、");
+            // 高亮重置(逐段渲染可能丢失 hljs 标注)
+            if (window.hljs && botMsg) {
+                botMsg.querySelectorAll("pre code").forEach(function (el) {
+                    hljs.highlightElement(el);
+                });
             }
-            var botMsg = addMessage("bot", reply);
-            addFeedback(botMsg, question, data.answer || "");
+            addFeedback(botMsg, question, fullAnswer);
         } catch (err) {
             removeTyping();
             addMessage("bot error", "⚠️ 网络错误，无法连接到服务器。");

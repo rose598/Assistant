@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.dialog.session import Session
 
 

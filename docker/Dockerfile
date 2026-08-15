@@ -50,5 +50,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/health')"
 
-# 启动命令
-CMD ["python", "src/main.py"]
+# 启动命令（main.py 无 __main__ 入口块，必须由 uvicorn 加载 app，否则容器秒退）
+CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

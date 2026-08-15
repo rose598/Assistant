@@ -48,3 +48,7 @@ Thumbs.db
 
 # ── Docker ──
 docker/.env
+
+# ── 本地备份/代理残留（不入库） ──
+.claude/
+_backup_week12/
