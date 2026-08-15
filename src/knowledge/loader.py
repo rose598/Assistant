@@ -21,6 +21,9 @@ from src.knowledge.schema import (
     SlurmCommand,
 )
 
+# 关键词精确命中时的模糊分加权（封顶 100）
+_KEYWORD_HIT_BONUS: float = 25.0
+
 
 class KnowledgeLoader:
     """知识库加载器。
@@ -146,7 +149,11 @@ class KnowledgeMatcher:
     def match(self, query: str, top_k: int | None = None) -> list[tuple[FAQEntry, float]]:
         """模糊匹配查询，返回排序后的 (条目, 得分) 列表。
 
-        得分范围为 0-100，由 rapidfuzz 的 partial_ratio 计算。
+        得分范围为 0-100，基础分由 rapidfuzz 的 partial_ratio 计算，
+        若条目任一关键词在查询中精确命中（双向子串，长度≥2），
+        基础分 ≥ 阈值时加 _KEYWORD_HIT_BONUS（封顶 100）。
+        这修复了泛化提问（如"如何提交作业"）下纯模糊分并列导致
+        答非所问条目排前的排序问题：关键词命中的对口条目得以胜出。
         """
         if not query.strip():
             return []
@@ -155,16 +162,42 @@ class KnowledgeMatcher:
 
         threshold = self._config.fuzzy_match_threshold
 
+        # 候选池放大：关键词加权可能把纯模糊排名靠后的条目提到前面，
+        # 若只取 limit=top_k 的窗口，这些条目连加权的机会都没有
+        pool = max(top_k * 5, 20)
         raw: list[tuple[str, float, int]] = process.extract(
-            query, self._choices, scorer=fuzz.partial_ratio, limit=top_k
+            query, self._choices, scorer=fuzz.partial_ratio, limit=pool
         )
 
         results: list[tuple[FAQEntry, float]] = []
         for _, score, idx in raw:
-            if score >= threshold:
-                results.append((self._kb.faq[idx], score))
+            if score < threshold:
+                continue
+            entry = self._kb.faq[idx]
+            if self._keyword_hit(query, entry):
+                score = min(100.0, score + _KEYWORD_HIT_BONUS)
+            results.append((entry, score))
 
-        return results
+        # 按加权分降序（稳定排序，同分保持原始顺序），再截取 top_k
+        results.sort(key=lambda pair: pair[1], reverse=True)
+        return results[:top_k]
+
+    @staticmethod
+    def _keyword_hit(query: str, entry: FAQEntry) -> bool:
+        """条目是否有任一关键词与查询精确互含（忽略大小写）。
+
+        双向子串：关键词出现在查询中（如"提交作业" ⊂ "如何提交作业"），
+        或查询包含在关键词中（如查询"sbatch" ⊂ 关键词"Invalid sbatch"）。
+        长度 <2 的关键词不参与，避免单字符误命中。
+        """
+        q = query.lower()
+        for kw in entry.keywords:
+            k = kw.lower().strip()
+            if len(k) < 2:
+                continue
+            if k in q or q in k:
+                return True
+        return False
 
     def match_one(self, query: str) -> tuple[FAQEntry | None, float]:
         """返回最佳匹配条目。"""
