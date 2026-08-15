@@ -96,8 +96,15 @@ mkdir -p data/chroma
 ### 6. 启动服务
 
 ```bash
-python src/main.py
+# 开发模式（热重载）
+uvicorn src.main:app --reload
+
+# 生产模式
+uvicorn src.main:app --host 0.0.0.0 --port 8000
 ```
+
+注意：`python src/main.py` 无法启动服务（main.py 无 `__main__` 入口块，会立即退出），
+必须由 uvicorn 加载 `src.main:app`。
 
 服务将在 `http://localhost:8000` 启动。
 
@@ -331,7 +338,14 @@ Instrumentator().instrument(app).expose(app)
 
 **症状**: `python src/main.py` 报错
 
-**排查步骤**:
+**首先确认启动命令**：`python src/main.py` 不是正确的启动方式（main.py 无入口块，
+会立即退出）。正确命令：
+
+```bash
+uvicorn src.main:app --host 0.0.0.0 --port 8000
+```
+
+若命令正确仍无法启动，按以下步骤排查：
 
 1. 检查 Python 版本：
    ```bash
