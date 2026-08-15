@@ -163,12 +163,13 @@
         var fullAnswer = "";
         try {
             var streamed = await askStream(question, botMsg);
-            removeTyping();
             if (streamed) {
+                // 流式路径: askStream 已将文本渲染到 botMsg.bubble, 只需去掉 typing 动画
                 fullAnswer = streamed;
+                botMsg.classList.remove("typing");
+                botMsg.removeAttribute("id");
             } else {
-                // 回退: 非流式 POST /api/ask
-                removeTyping();
+                // 回退: 非流式 POST /api/ask (typing 元素保留, 复用为回复容器)
                 var resp = await fetch("/api/ask", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -180,7 +181,9 @@
                         var j = await resp.json();
                         if (j && j.detail) { detail = j.detail; }
                     } catch (e) { /* 忽略 */ }
-                    addMessage("bot", "⚠️ " + detail);
+                    botMsg.classList.remove("typing");
+                    botMsg.removeAttribute("id");
+                    botMsg.querySelector(".bubble").innerHTML = escapeHtml("⚠️ " + detail);
                     return;
                 }
                 var data = await resp.json();
@@ -189,6 +192,8 @@
                 if (data.sources && data.sources.length) {
                     reply += "\n\n**参考来源**: " + data.sources.join("、");
                 }
+                botMsg.classList.remove("typing");
+                botMsg.removeAttribute("id");
                 botMsg.querySelector(".bubble").innerHTML = renderMarkdown(reply);
             }
             // 高亮重置(逐段渲染可能丢失 hljs 标注)
