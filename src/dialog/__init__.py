@@ -7,6 +7,7 @@
 - 第 5 周交付物（A 职责）：
   ``DialogState`` / ``DialogContext`` / ``DialogManager``：脚本改写
   多轮对话状态机（state_machine.py，契约见 docs/week5-A-state-machine-design.md）。
+  （对话式改写流程见 src/script/rewrite_flow.py。）
 
 真实 Redis 存储为预留接入点，当前默认内存实现（见 store.create_session_store）。
 """

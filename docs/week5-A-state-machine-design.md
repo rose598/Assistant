@@ -252,8 +252,12 @@ class RewriteContext:
 | 1 | `src/script/parser.py` | 无 | 解析 7 |
 | 2 | `src/script/templates.py` + `generator.py` | 无 | 生成 7 + 组合 15 + 验证 3 |
 | 3 | `src/dialog/state_machine.py` | 无（模式复用第 3 周 store） | 19 + 14 |
-| 4 | `src/dialog/flow.py` | parser | 12 |
+| 4 | `src/script/rewrite_flow.py` | parser | 12 |
 | 5 | 集成：`src/pipeline.py` 追加分支 + 新增 `src/api/routes_script.py` | 全部 | 周四 v3.0 + 周五 10 场景 |
+
+> 落位说明：第 4 层原计划产出物名 `dialog/flow.py`，实际按脚本域归属落位为
+> `src/script/rewrite_flow.py`（避免 routes_script 集成时跨域引用
+> dialog 包）；验收以测试为准，不受文件名影响。
 
 每层完成即替换对应测试文件顶部的 Mock 定义为 `from src.xxx import ...`（连同内联的
 DialogState/DialogContext/RewriteState/RewriteContext 一并替换），跑通该层用例再进下一层。
