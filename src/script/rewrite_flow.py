@@ -127,6 +127,10 @@ class ScriptRewriteFlow:
         context.save_step("finish", None)
         return True
 
+    def discard(self, session_id: str) -> bool:
+        """丢弃改写上下文（会话过期/显式清理，集成层同步生命周期用）."""
+        return self.contexts.pop(session_id, None) is not None
+
     @staticmethod
     def _replace_param(script: str, param: str, value: str) -> str:
         """替换脚本中的单个指令参数，兼容两种指令格式。
