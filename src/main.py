@@ -30,6 +30,7 @@ from src.api.routes_ask import router as ask_router
 from src.api.routes_feedback import router as feedback_router
 from src.api.routes_flow import router as flow_router
 from src.api.routes_jobs import router as jobs_router
+from src.api.routes_script import router as script_router
 from src.api.websocket import router as ws_router
 from src.config import get_config
 
@@ -92,6 +93,7 @@ app.include_router(jobs_router)
 app.include_router(feedback_router)
 app.include_router(ws_router)
 app.include_router(flow_router)
+app.include_router(script_router)
 
 
 # ---- 健康检查 ----
