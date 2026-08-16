@@ -278,3 +278,41 @@ DialogState/DialogContext/RewriteState/RewriteContext 一并替换），跑通�
 - 77 验收用例全部在库（tests/test_dialog/ 与 tests/test_script/ 四文件），各文件内联
   Mock 待对应模块实现后逐层替换；
 - 实现自 `src/dialog/state_machine.py` 起步，按模块粒度提交（[dialog]/[script] 前缀）。
+
+## 十一、集成层设计（双容器桥接，周四落地）
+
+集成问题：`DialogManager`（对话会话容器）与 `ScriptRewriteFlow`（脚本改写数据容器）
+如何协作。已否决备选：**合并容器/枚举**（破 45 例契约断言）、**两容器各自为政、
+路由直调**（TTL 不一致泄漏 + 前端拿不到统一当前状态）。最终选型：**桥接 Facade**。
+
+### 11.1 架构与纪律
+
+- 唯一编排入口 `src/script/service.py`（`ScriptRewriteService`），单键（session_id）双容器；
+- `src/api/routes_script.py` 为薄路由层，**纪律：禁 import rewrite_flow**，
+  一切经 service（否则双写一致性与 TTL 同步失效）；
+- `src/main.py` 仅追加导入与 `include_router(script_router)`（只增不删）；
+- `src/pipeline.py` 追加脚本改写关键词旁路：命中即回引导文案指向 /api/script
+  端点，不动 ask() 主干（如实记录：该分支偏摆设，真实对话在 REST 端点）。
+
+### 11.2 三项核心机制
+
+| 机制 | 实现 | 语义 |
+|------|------|------|
+| 生命周期裁决 | `_alive()`：入口先 `manager.get_session()`，None（过期/不存在）→ 同步 `flow.discard(sid)` | TTL 只归 DialogManager；数据层随会话惰性清理，无泄漏 |
+| 状态同步 | `_STATE_MAP` / `_REVERSE_STATE_MAP`（IDENTIFY/COLLECT/CONFIRM/APPLY/DONE ↔ 同名态）；`_sync()` 先把字段快照写入 `collected_fields` 再 `update_state` | flow 走一步、状态机同步转一步；状态机对外是"当前状态"唯一真相 |
+| 回退 | 状态机弹快照栈恢复状态+字段；数据层按恢复字段重建 `flow.changes` 并清空 `modified_script` | `original_script` 全程不可变，重置天然廉价；无需 flow 支持快照 |
+
+验证口径：service 14 自测（全链路同步、TTL 假时钟过期清理、`status().consistent`
+分叉检测、回退字段恢复）+ routes 11 例 TestClient 全链路；E2E 预演 10/10 通过
+（`docs/week5-e2e-预演记录.md`，8001 实例 `--workers=1`）。
+
+### 11.3 已知劣势与对冲（诚实记录）
+
+| # | 劣势 | 对冲 |
+|---|------|------|
+| 1 | 双写一致性是新 bug 源（漏同步 → 静默分叉） | routes 禁 import flow + service 单设分叉检测用例 |
+| 2 | 多一层间接（routes→service→manager+flow） | 可接受：换来 77 例契约不破，交换划算 |
+| 3 | 枚举映射表为持续维护点（隐性耦合） | 本文档注明，纳入变更检查清单 |
+| 4 | pipeline 旁路偏摆设（仅引导文案） | v3.0 文档如实标注实用价值有限 |
+| 5 | 部署约束固化：单例+内存态 → 必须 `--workers=1` | 启动命令与部署文档明示 |
+| 6 | 边界靠纪律维持（绕过 service 即失效） | code review 强制唯一入口 |
