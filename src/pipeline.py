@@ -38,11 +38,37 @@ class Answer:
     fallback: bool = False  # 是否走了回退逻辑(未精确命中)
     matched_score: float = 0.0
     suggestions: list[str] = field(default_factory=list)  # 供用户进一步操作的建议
+    script_rewrite: bool = False  # 第 5 周：是否命中脚本改写意图旁路
 
     @property
     def needs_llm(self) -> bool:
         """是否需要 LLM 兜底（供上层决策，当前版本不实际调用 LLM）。"""
         return self.intent.is_unknown or len(self.answer) == 0
+
+
+# 第 5 周：脚本改写意图旁路（问答链路只给引导，真实对话走 /api/script 端点）
+_SCRIPT_REWRITE_KEYWORDS: tuple[str, ...] = (
+    "改写脚本",
+    "修改脚本",
+    "改脚本",
+    "改sbatch",
+    "改写sbatch",
+    "换分区",
+    "换队列",
+    "加GPU",
+    "改时长",
+    "修改参数",
+)
+
+_SCRIPT_REWRITE_HINT = (
+    "检测到脚本改写需求：可用 POST /api/script/rewrite/start 发起对话式改写，"
+    "支持字段建议、差分显示与一键导出。"
+)
+
+
+def _looks_like_script_rewrite(query: str) -> bool:
+    """关键词前置判定：是否为脚本改写类请求（不动意图分类器）。"""
+    return any(keyword in query for keyword in _SCRIPT_REWRITE_KEYWORDS)
 
 
 # 各一级意图对应的兜底引导文案
@@ -95,6 +121,7 @@ class AnswerPipeline:
 
         # 1. 意图识别
         intent = self._intent.classify(query)
+        script_rewrite = _looks_like_script_rewrite(query)
 
         # 2. 知识库检索:先模糊匹配,再按关键词精确匹配兜底
         matched: FAQEntry | None = None
@@ -114,6 +141,8 @@ class AnswerPipeline:
             fallback = True
 
         suggestions = self._build_suggestions(matched, intent)
+        if script_rewrite:
+            suggestions.insert(0, _SCRIPT_REWRITE_HINT)
 
         return Answer(
             query=query,
@@ -123,6 +152,7 @@ class AnswerPipeline:
             fallback=fallback,
             matched_score=score,
             suggestions=suggestions,
+            script_rewrite=script_rewrite,
         )
 
     def _build_suggestions(

@@ -18,7 +18,8 @@
 3. [作业诊断接口](#作业诊断接口)
 4. [订阅管理接口](#订阅管理接口)
 5. [反馈接口](#反馈接口)
-6. [健康检查](#健康检查)
+6. [脚本改写接口](#脚本改写接口)
+7. [健康检查](#健康检查)
 
 ---
 
@@ -287,6 +288,107 @@ curl http://localhost:8000/api/jobs/12345/diagnose
 | session_id | string | ✅ | 会话ID |
 | rating | string | ✅ | helpful / not_helpful |
 | comment | string | ❌ | 详细反馈 |
+
+---
+
+## 脚本改写接口
+
+第 5 周交付：多轮对话式 sbatch 脚本改写（检测到改脚本意图时的子流程）。
+所有端点前缀 `/api/script`，经 `ScriptRewriteService` 编排层调用（禁止直接访问 rewrite_flow）。
+
+### POST /api/script/parse
+
+解析 sbatch 脚本字段（每行一条指令；同一行多选项仅取第一个，与契约口径一致）。
+
+**请求体**:
+
+```json
+{ "script": "#!/bin/bash\n#SBATCH -J job1\n#SBATCH -p Students\npython train.py\n" }
+```
+
+**响应 200**:
+
+```json
+{ "fields": { "J": "job1", "p": "Students" }, "data_source": "memory" }
+```
+
+### GET /api/script/templates
+
+模板清单（名称 → 描述）。
+
+**响应 200**:
+
+```json
+{ "templates": { "minimal_cpu": "简单 CPU 计算", "gpu_single": "单卡 GPU 训练" }, "data_source": "memory" }
+```
+
+### POST /api/script/generate
+
+按模板生成脚本；未知模板返回 422。
+
+**请求体**:
+
+```json
+{ "template_name": "minimal_cpu", "overrides": { "job_name": "job1" } }
+```
+
+**响应 200**:
+
+```json
+{ "script": "#!/bin/bash\n#SBATCH -J job1\n...", "data_source": "memory" }
+```
+
+### POST /api/script/suggest
+
+字段补齐建议。
+
+**请求体**:
+
+```json
+{ "fields": { "partition": "Students" } }
+```
+
+**响应 200**:
+
+```json
+{ "suggestions": { "cpus": "1", "mem": "4G", "time": "00:10:00" }, "explanation": ["..."] }
+```
+
+### 改写流程（会话式）
+
+以下端点以 `session_id` 维系一次改写会话（双容器桥接：状态机 + 改写流程，TTL 1h）：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/script/rewrite/start` | 开始改写，体 `{session_id, script}` |
+| GET | `/api/script/rewrite/{session_id}/status` | 会话状态快照 |
+| POST | `/api/script/rewrite/{session_id}/identify` | 识别变更集，体 `{changes}` |
+| POST | `/api/script/rewrite/{session_id}/collect` | 收集单个参数，体 `{field, value}` |
+| POST | `/api/script/rewrite/{session_id}/confirm` | 确认修改，返回 modified_script + diff |
+| POST | `/api/script/rewrite/{session_id}/apply` | 应用修改（→APPLY）|
+| POST | `/api/script/rewrite/{session_id}/rollback` | 回退一步（快照恢复状态+字段）|
+| POST | `/api/script/rewrite/{session_id}/finish` | 完成（→DONE）|
+| GET | `/api/script/rewrite/{session_id}/diff` | 查看当前差分 |
+| GET | `/api/script/rewrite/{session_id}/export` | 导出 .sbatch 下载（text/plain）|
+| DELETE | `/api/script/rewrite/{session_id}` | 删除会话（204）|
+
+**confirm 响应 200** 示例（含差分）：
+
+```json
+{
+  "dialog_state": "confirm",
+  "consistent": true,
+  "modified_script": "#!/bin/bash\n#SBATCH -p GPU-RTX5090 ...",
+  "diff_text": "...",
+  "diff_summary": { "removed": [], "added": [], "replaced": [["旧行", "新行"]] }
+}
+```
+
+> 语义说明：
+> - 状态序列：`INIT → IDENTIFY → COLLECT → CONFIRM → APPLY → DONE`（回退为栈操作）
+> - `rollback` 恢复最近一次状态转换时的字段快照（替代逐 collect 回退）
+> - `_replace_param` 只替换已有参数、不新增参数行（改写 = 参数替换）
+> - `diff` 中 `-p` 等参数改动走整行 `replaced` 配对，不拆 removed/added
 
 ---
 
